@@ -7,15 +7,18 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.mindspace.navigation.Screen
 import com.example.mindspace.ui.screens.AddNoteScreen
+import com.example.mindspace.ui.screens.NoteDetailScreen
 import com.example.mindspace.ui.screens.NoteListScreen
 import com.example.mindspace.ui.theme.MindSpaceTheme
 
@@ -39,32 +42,46 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MindSpaceApp() {
     val navController: NavHostController = rememberNavController()
-    
+    val viewModel: NoteViewModel = viewModel()
+
     NavHost(
         navController = navController,
         startDestination = Screen.NoteList.route
-    ){
-        composable(Screen.NoteList.route){
+    ) {
+        composable(Screen.NoteList.route) {
             NoteListScreen(
+                viewModel = viewModel,
                 onAddNote = { navController.navigate(Screen.AddNote.route) },
                 onNoteClick = { noteId ->
                     navController.navigate(Screen.NoteDetail.createRoute(noteId))
                 }
             )
         }
-        composable(Screen.AddNote.route){
+
+        composable(Screen.AddNote.route) {
             AddNoteScreen(
+                viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() }
             )
-
         }
+
+        composable(
+            route = Screen.NoteDetail.route,
+            arguments = listOf(
+                navArgument("noteId") {
+                    type = NavType.IntType
+                }
+            )
+        ){ backStackEntry ->
+            val noteId = backStackEntry.arguments?.getInt("noteId") ?: 0
+
+            NoteDetailScreen(
+                noteId = noteId,
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
+}
     }
-    
 }
 
 
-
-@Composable
-fun Title(text: String) {
-    Text(text = text)  // Declarative: DESCRIBE what it should be
-}
