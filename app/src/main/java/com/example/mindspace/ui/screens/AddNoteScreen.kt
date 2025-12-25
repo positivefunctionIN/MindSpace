@@ -18,6 +18,7 @@ fun AddNoteScreen(
     // State for form fields
     var title by remember { mutableStateOf("") }
     var content by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf("General") }
     var showError by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -59,6 +60,12 @@ fun AddNoteScreen(
                 } else null
             )
 
+            CategoryDropdown(
+                selectedCategory = category,
+                onCategorySelected = { category = it },
+                modifier = Modifier.fillMaxWidth()
+            )
+
             // Content input
             OutlinedTextField(
                 value = content,
@@ -83,7 +90,8 @@ fun AddNoteScreen(
                     } else {
                         viewModel.addNote(
                             title = title.ifBlank { "Untitled" },
-                            content = content
+                            content = content,
+                            category = category
                         )
                         onNavigateBack()
                     }

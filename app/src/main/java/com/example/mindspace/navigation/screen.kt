@@ -7,5 +7,5 @@ sealed class Screen(val route: String) {
         fun createRoute(noteId: Int) = "note_detail/$noteId"
     }
     object Analytics : Screen("analytics")
-
+    object Trash : Screen("trash")
 }

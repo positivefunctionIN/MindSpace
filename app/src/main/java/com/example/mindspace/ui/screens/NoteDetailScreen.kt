@@ -1,5 +1,6 @@
 package com.example.mindspace.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +12,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
@@ -21,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -53,17 +56,32 @@ fun NoteDetailScreen(
 
     // State to toggle between view and edit modes
     var isEditing by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var showUnsavedDialog by remember { mutableStateOf(false) }
 
     // State for the text fields in edit mode
     var editTitle by remember { mutableStateOf("") }
     var editContent by remember { mutableStateOf("") }
+    var editCategory by remember { mutableStateOf("General") }
+
 
     // Update the edit fields whenever the selected note changes.
     LaunchedEffect(key1 = note) {
         note?.let {
             editTitle = it.title
             editContent = it.content
+            editCategory = it.category
         }
+    }
+
+    val hasUnsavedChanges = remember(editTitle, editContent, editCategory, note) {
+        note?.let {
+            editTitle != it.title || editContent != it.content || editCategory != it.category
+        } ?: false
+    }
+
+    BackHandler(enabled = isEditing && hasUnsavedChanges) {
+        showUnsavedDialog = true
     }
 
     val currentNote = note
@@ -84,7 +102,13 @@ fun NoteDetailScreen(
                         Text(if (isEditing) "Edit Note" else currentNote.title)
                     },
                     navigationIcon = {
-                        IconButton(onClick = onNavigateBack) {
+                        IconButton(onClick = {
+                            if (isEditing && hasUnsavedChanges) {
+                                showUnsavedDialog = true
+                            } else {
+                                onNavigateBack()
+                            }
+                        }) {
                             Icon(Icons.Default.ArrowBack, contentDescription = "Go Back")
                         }
                     },
@@ -96,7 +120,8 @@ fun NoteDetailScreen(
                                     currentNote.copy(
                                         title = editTitle,
                                         content = editContent,
-                                        timestamp = System.currentTimeMillis()
+                                        category = editCategory,
+                                        updatedAt = System.currentTimeMillis()
                                     )
                                 )
                                 isEditing = false // Exit edit mode
@@ -110,10 +135,7 @@ fun NoteDetailScreen(
                             }
                         }
                         // Always show Delete button
-                        IconButton(onClick = {
-                            viewModel.deleteNote(currentNote)
-                            onNavigateBack() // Go back after deleting
-                        }) {
+                        IconButton(onClick = { showDeleteDialog = true }) {
                             Icon(Icons.Default.Delete, contentDescription = "Delete")
                         }
                     }
@@ -136,6 +158,13 @@ fun NoteDetailScreen(
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
+                    CategoryDropdown(
+                        selectedCategory = editCategory,
+                        onCategorySelected = { editCategory = it },
+                        modifier = Modifier.fillMaxWidth()
+
+                    )
+
                     OutlinedTextField(
                         value = editContent,
                         onValueChange = { editContent = it },
@@ -148,7 +177,7 @@ fun NoteDetailScreen(
                 } else {
                     // --- DISPLAY VIEW ---
                     Text(
-                        text = formatDetailTimestamp(currentNote.timestamp),
+                        text = formatDetailTimestamp(currentNote.updatedAt),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -166,6 +195,64 @@ fun NoteDetailScreen(
                     )
                 }
             }
+        }
+
+        if (showDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = false },
+                title = { Text("Move to Trash?") },
+                text = { Text("Are you sure you want to move this note to the trash?") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            viewModel.deleteNote(currentNote.id)
+                            showDeleteDialog = false
+                            onNavigateBack()
+                        }
+                    ) {
+                        Text("Move to Trash", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showDeleteDialog = false }
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        if (showUnsavedDialog) {
+            AlertDialog(
+                onDismissRequest = { showUnsavedDialog = false },
+                title = { Text("Unsaved Changes") },
+                text = { Text("You have unsaved changes. Do you want to discard them and go back?") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showUnsavedDialog = false
+                            isEditing = false
+                            // Reset changes to original
+                            note?.let {
+                                editTitle = it.title
+                                editContent = it.content
+                                editCategory = it.category
+                            }
+                            onNavigateBack()
+                        }
+                    ) {
+                        Text("Discard & Go Back")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showUnsavedDialog = false }
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }

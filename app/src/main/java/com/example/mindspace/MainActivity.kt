@@ -16,11 +16,16 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.mindspace.data.local.NoteDatabase
+import com.example.mindspace.data.repository.NoteRepository
 import com.example.mindspace.navigation.Screen
 import com.example.mindspace.ui.screens.AddNoteScreen
 import com.example.mindspace.ui.screens.NoteDetailScreen
 import com.example.mindspace.ui.screens.NoteListScreen
 import com.example.mindspace.ui.theme.MindSpaceTheme
+import com.example.mindspace.ui.trash.TrashScreen
+import com.example.mindspace.ui.trash.TrashViewModel
+import com.example.mindspace.ui.trash.TrashViewModelFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,7 +47,14 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MindSpaceApp() {
     val navController: NavHostController = rememberNavController()
-    val viewModel: NoteViewModel = viewModel()
+
+    // Create a single instance of the repository
+    val noteDao = NoteDatabase.getDatabase(navController.context).noteDao()
+    val noteRepository = NoteRepository(noteDao)
+
+    val noteViewModel: NoteViewModel = viewModel(
+        factory = NoteViewModelFactory(noteRepository)
+    )
 
     NavHost(
         navController = navController,
@@ -50,17 +62,18 @@ fun MindSpaceApp() {
     ) {
         composable(Screen.NoteList.route) {
             NoteListScreen(
-                viewModel = viewModel,
+                viewModel = noteViewModel,
                 onAddNote = { navController.navigate(Screen.AddNote.route) },
                 onNoteClick = { noteId ->
                     navController.navigate(Screen.NoteDetail.createRoute(noteId))
-                }
+                },
+                onGoToTrash = { navController.navigate(Screen.Trash.route) }
             )
         }
 
         composable(Screen.AddNote.route) {
             AddNoteScreen(
-                viewModel = viewModel,
+                viewModel = noteViewModel,
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -72,16 +85,23 @@ fun MindSpaceApp() {
                     type = NavType.IntType
                 }
             )
-        ){ backStackEntry ->
+        ) { backStackEntry ->
             val noteId = backStackEntry.arguments?.getInt("noteId") ?: 0
-
             NoteDetailScreen(
                 noteId = noteId,
-                viewModel = viewModel,
+                viewModel = noteViewModel,
                 onNavigateBack = { navController.popBackStack() }
             )
-}
+        }
+
+        composable(Screen.Trash.route) {
+            val trashViewModel: TrashViewModel = viewModel(
+                factory = TrashViewModelFactory(noteRepository)
+            )
+            TrashScreen(
+                viewModel = trashViewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
     }
 }
-
-

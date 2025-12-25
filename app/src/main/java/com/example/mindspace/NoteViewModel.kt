@@ -1,18 +1,19 @@
 package com.example.mindspace
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.mindspace.data.local.Note
-import com.example.mindspace.data.local.NoteDatabase
 import com.example.mindspace.data.repository.NoteRepository
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class NoteViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository: NoteRepository
+class NoteViewModel(private val repository: NoteRepository) : ViewModel() {
+
     private val _notes = MutableStateFlow<List<Note>>(emptyList())
     val notes: StateFlow<List<Note>> = _notes.asStateFlow()
 
@@ -25,15 +26,20 @@ class NoteViewModel(application: Application) : AndroidViewModel(application) {
     private val _errorMessages = MutableStateFlow<List<String>>(emptyList())
     val errorMessages: StateFlow<List<String>> = _errorMessages.asStateFlow()
 
+    val trashCount: StateFlow<Int> = repository.trashCount
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = 0
+        )
+
     init {
-        val noteDao = NoteDatabase.getDatabase(application).noteDao()
-        repository = NoteRepository(noteDao)
         loadNotes()
     }
 
     private fun loadNotes() {
         viewModelScope.launch {
-            repository.allNotes.collect { notes ->
+            repository.allActiveNotes.collect { notes ->
                 _notes.value = notes
             }
         }
@@ -52,8 +58,7 @@ class NoteViewModel(application: Application) : AndroidViewModel(application) {
                     category = category
                 )
                 repository.insertNote(note)
-            }
-            catch (e: Exception) {
+            } catch (e: Exception) {
                 _errorMessages.value = _errorMessages.value + "Error adding note: ${e.message}"
             }
         }
@@ -63,19 +68,17 @@ class NoteViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             try {
                 repository.updateNote(note)
-            }
-            catch (e: Exception) {
+            } catch (e: Exception) {
                 _errorMessages.value = _errorMessages.value + "Error updating note: ${e.message}"
             }
         }
     }
 
-    fun deleteNote(note: Note) {
+    fun deleteNote(noteId: Int) {
         viewModelScope.launch {
             try {
-                repository.deleteNote(note)
-            }
-            catch (e: Exception) {
+                repository.moveToTrash(noteId)
+            } catch (e: Exception) {
                 _errorMessages.value = _errorMessages.value + "Error deleting note: ${e.message}"
             }
         }
@@ -86,8 +89,7 @@ class NoteViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val note = repository.getNoteById(noteId)
                 _selectedNote.value = note
-            }
-            catch (e: Exception) {
+            } catch (e: Exception) {
                 _errorMessages.value = _errorMessages.value + "Error loading note: ${e.message}"
             }
         }
@@ -95,5 +97,15 @@ class NoteViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearError() {
         _errorMessages.value = emptyList()
+    }
+}
+
+class NoteViewModelFactory(private val repository: NoteRepository) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(NoteViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return NoteViewModel(repository) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
