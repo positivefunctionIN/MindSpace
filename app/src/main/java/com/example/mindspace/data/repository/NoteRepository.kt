@@ -26,6 +26,16 @@ class NoteRepository(private val noteDao: NoteDao) {
         note.copy(updatedAt = System.currentTimeMillis())
     )
 
+    // ===== TOGGLE OPERATIONS =====
+
+    suspend fun togglePin(noteId: Int, isPinned: Boolean) {
+        noteDao.togglePin(noteId, isPinned, System.currentTimeMillis())
+    }
+
+    suspend fun toggleFavorite(noteId: Int, isFavorite: Boolean) {
+        noteDao.toggleFavorite(noteId, isFavorite, System.currentTimeMillis())
+    }
+
     // ===== TRASH OPERATIONS =====
 
     val trashNotes: Flow<List<Note>> = noteDao.getTrashNotes()

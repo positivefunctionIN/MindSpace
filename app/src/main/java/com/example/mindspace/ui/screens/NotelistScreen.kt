@@ -1,9 +1,6 @@
 package com.example.mindspace.ui.screens
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -12,7 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -20,19 +17,18 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.mindspace.NoteViewModel
-import com.example.mindspace.data.local.Note
+import com.example.mindspace.ui.components.NoteCard
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,7 +62,7 @@ fun NoteListScreen(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
-                Text("MindSpace", modifier = Modifier.padding(16.dp))
+                Text("MindSpace", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleLarge)
                 Divider()
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Default.Delete, contentDescription = null) },
@@ -95,7 +91,7 @@ fun NoteListScreen(
                             OutlinedTextField(
                                 value = searchQuery,
                                 onValueChange = { searchQuery = it },
-                                label = { Text("Search Notes") },
+                                placeholder = { Text("Search notes...") },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
                                 colors = OutlinedTextFieldDefaults.colors(
@@ -189,174 +185,81 @@ fun NoteListScreen(
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
+                    modifier = Modifier.padding(paddingValues),
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    // Pinned Section Header (only if there are pinned notes)
+                    val pinnedNotes = filteredNotes.filter { it.isPinned }
+                    val unpinnedNotes = filteredNotes.filter { !it.isPinned }
+
+                    if (pinnedNotes.isNotEmpty()) {
+                        item {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            ) {
+                                Icon(
+                                    Icons.Filled.PushPin,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .rotate(45f),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    "Pinned",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+
+                        items(
+                            items = pinnedNotes,
+                            key = { it.id }
+                        ) { note ->
+                            NoteCard(
+                                note = note,
+                                onClick = { onNoteClick(note.id) },
+                                onTogglePin = { viewModel.togglePin(note) },
+                                onToggleFavorite = { viewModel.toggleFavorite(note) },
+                                onDelete = { viewModel.deleteNote(note.id) }
+                            )
+                        }
+
+                        // Divider between pinned and others
+                        if (unpinnedNotes.isNotEmpty()) {
+                            item {
+                                Divider(
+                                    modifier = Modifier.padding(vertical = 16.dp),
+                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                                )
+                                Text(
+                                    "Others",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                    }
+
+                    // Unpinned Notes
                     items(
-                        items = filteredNotes,
-                        key = { note -> note.id }
+                        items = unpinnedNotes,
+                        key = { it.id }
                     ) { note ->
-                        SwipeableNoteCard(
+                        NoteCard(
                             note = note,
-                            onNoteClick = { onNoteClick(note.id) },
+                            onClick = { onNoteClick(note.id) },
+                            onTogglePin = { viewModel.togglePin(note) },
+                            onToggleFavorite = { viewModel.toggleFavorite(note) },
                             onDelete = { viewModel.deleteNote(note.id) }
                         )
                     }
                 }
             }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SwipeableNoteCard(
-    note: Note,
-    onNoteClick: () -> Unit,
-    onDelete: () -> Unit
-) {
-    var showDeleteConfirmation by remember { mutableStateOf(false) }
-    val coroutineScope = rememberCoroutineScope()
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = {
-            if (it == SwipeToDismissBoxValue.EndToStart) { // Swiping left
-                showDeleteConfirmation = true
-                return@rememberSwipeToDismissBoxState false // Don't dismiss immediately, wait for dialog
-            }
-            false
-        }
-    )
-
-    SwipeToDismissBox(
-        state = dismissState,
-        enableDismissFromStartToEnd = false, // Disable swipe right
-        enableDismissFromEndToStart = true,  // Enable swipe left
-        backgroundContent = {
-            val color = when (dismissState.dismissDirection) {
-                SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.errorContainer
-                else -> Color.Transparent
-            }
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(color)
-                    .padding(horizontal = 20.dp),
-                contentAlignment = Alignment.CenterEnd
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Delete Note",
-                    tint = MaterialTheme.colorScheme.onErrorContainer
-                )
-            }
-        }
-    ) { // The content is the lambda here
-        NoteCard(
-            note = note,
-            onClick = onNoteClick
-        )
-    }
-
-
-    if (showDeleteConfirmation) {
-        AlertDialog(
-            onDismissRequest = {
-                showDeleteConfirmation = false
-                coroutineScope.launch {
-                    dismissState.reset()
-                }
-            },
-            title = { Text("Delete Note?") },
-            text = { Text("\"${note.title}\" will be deleted. Are you sure?") },
-            confirmButton = {
-                TextButton(onClick = {
-                    onDelete()
-                    showDeleteConfirmation = false
-                }) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showDeleteConfirmation = false
-                    coroutineScope.launch {
-                        dismissState.reset()
-                    }
-                }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-}
-
-@Composable
-fun NoteCard(
-    note: Note,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = note.title,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = note.content,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(note.timestamp)),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outline
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Timestamp
-            Text(
-                text = formatTimestamp(note.timestamp),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline
-            )
-
-
-        }
-    }
-}
-
-fun formatTimestamp(timestamp: Long): String {
-    val now = System.currentTimeMillis()
-    val diff = now - timestamp
-
-    return when {
-        diff < 60_000 -> "Just now"
-        diff < 3_600_000 -> "${diff / 60_000} min ago"
-        diff < 86_400_000 -> "${diff / 3_600_000} hr ago"
-        else -> {
-            val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-            sdf.format(Date(timestamp))
         }
     }
 }

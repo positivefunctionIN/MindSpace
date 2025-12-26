@@ -46,10 +46,6 @@ class NoteViewModel(private val repository: NoteRepository) : ViewModel() {
     }
 
     fun addNote(title: String, content: String, category: String = "General") {
-        if (title.isBlank() && content.isBlank()) {
-            _errorMessages.value = _errorMessages.value + "Title and content cannot be blank"
-            return
-        }
         viewModelScope.launch {
             try {
                 val note = Note(
@@ -92,6 +88,18 @@ class NoteViewModel(private val repository: NoteRepository) : ViewModel() {
             } catch (e: Exception) {
                 _errorMessages.value = _errorMessages.value + "Error loading note: ${e.message}"
             }
+        }
+    }
+
+    fun togglePin(note: Note) {
+        viewModelScope.launch {
+            repository.togglePin(note.id, !note.isPinned)
+        }
+    }
+
+    fun toggleFavorite(note: Note) {
+        viewModelScope.launch {
+            repository.toggleFavorite(note.id, !note.isFavorite)
         }
     }
 

@@ -40,6 +40,14 @@ interface NoteDao {
     @Update
     suspend fun updateNote(note: Note)
 
+    // ===== TOGGLE OPERATIONS =====
+
+    @Query("UPDATE notes SET isPinned = :isPinned, updatedAt = :updatedAt WHERE id = :noteId")
+    suspend fun togglePin(noteId: Int, isPinned: Boolean, updatedAt: Long)
+
+    @Query("UPDATE notes SET isFavorite = :isFavorite, updatedAt = :updatedAt WHERE id = :noteId")
+    suspend fun toggleFavorite(noteId: Int, isFavorite: Boolean, updatedAt: Long)
+
     // ===== TRASH OPERATIONS =====
 
     @Query("SELECT * FROM notes WHERE isDeleted = 1 ORDER BY deletedAt DESC")
@@ -48,23 +56,18 @@ interface NoteDao {
     @Query("SELECT COUNT(*) FROM notes WHERE isDeleted = 1")
     fun getTrashCount(): Flow<Int>
 
-    // Soft Delete: Move to Trash
     @Query("UPDATE notes SET isDeleted = 1, deletedAt = :deletedAt WHERE id = :noteId")
     suspend fun moveToTrash(noteId: Int, deletedAt: Long)
 
-    // Restore from Trash
     @Query("UPDATE notes SET isDeleted = 0, deletedAt = null WHERE id = :noteId")
     suspend fun restoreFromTrash(noteId: Int)
 
-    // Permanently Delete a single note
     @Query("DELETE FROM notes WHERE id = :noteId")
     suspend fun deletePermanently(noteId: Int)
 
-    // Empty Entire Trash
     @Query("DELETE FROM notes WHERE isDeleted = 1")
     suspend fun emptyTrash()
 
-    // Auto-delete notes from trash older than a certain time
     @Query("DELETE FROM notes WHERE isDeleted = 1 AND deletedAt < :threshold")
     suspend fun deleteOldTrashNotes(threshold: Long)
 }
