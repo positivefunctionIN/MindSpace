@@ -48,6 +48,14 @@ interface NoteDao {
     @Query("UPDATE notes SET isFavorite = :isFavorite, updatedAt = :updatedAt WHERE id = :noteId")
     suspend fun toggleFavorite(noteId: Int, isFavorite: Boolean, updatedAt: Long)
 
+    // ===== REMINDER OPERATIONS =====
+
+    @Query("UPDATE notes SET hasReminder = :hasReminder, reminderTime = :reminderTime, updatedAt = :updatedAt WHERE id = :noteId")
+    suspend fun updateReminder(noteId: Int, hasReminder: Boolean, reminderTime: Long?, updatedAt: Long)
+
+    @Query("SELECT * FROM notes WHERE hasReminder = 1 AND reminderTime > :currentTime AND isDeleted = 0 ORDER BY reminderTime ASC")
+    fun getUpcomingReminders(currentTime: Long): Flow<List<Note>>
+
     // ===== TRASH OPERATIONS =====
 
     @Query("SELECT * FROM notes WHERE isDeleted = 1 ORDER BY deletedAt DESC")

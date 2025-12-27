@@ -36,6 +36,18 @@ class NoteRepository(private val noteDao: NoteDao) {
         noteDao.toggleFavorite(noteId, isFavorite, System.currentTimeMillis())
     }
 
+    // ===== REMINDER OPERATIONS =====
+
+    suspend fun setReminder(noteId: Int, reminderTime: Long) {
+        noteDao.updateReminder(noteId, true, reminderTime, System.currentTimeMillis())
+    }
+
+    suspend fun cancelReminder(noteId: Int) {
+        noteDao.updateReminder(noteId, false, null, System.currentTimeMillis())
+    }
+
+    fun getUpcomingReminders(): Flow<List<Note>> = noteDao.getUpcomingReminders(System.currentTimeMillis())
+
     // ===== TRASH OPERATIONS =====
 
     val trashNotes: Flow<List<Note>> = noteDao.getTrashNotes()

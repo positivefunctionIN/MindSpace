@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [Note::class],
-    version = 2, // <--- THE CRITICAL FIX
+    version = 3, // Incremented for the reminder feature
     exportSchema = false
 )
 abstract class NoteDatabase : RoomDatabase() {
