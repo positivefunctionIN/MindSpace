@@ -12,6 +12,8 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
@@ -36,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.mindspace.NoteViewModel
+import com.example.mindspace.ui.components.ReminderBottomSheet
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -58,6 +61,7 @@ fun NoteDetailScreen(
     var isEditing by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showUnsavedDialog by remember { mutableStateOf(false) }
+    var showReminderSheet by remember { mutableStateOf(false) }
 
     // State for the text fields in edit mode
     var editTitle by remember { mutableStateOf("") }
@@ -129,7 +133,14 @@ fun NoteDetailScreen(
                                 Icon(Icons.Default.Check, contentDescription = "Save")
                             }
                         } else {
-                            // When viewing, show Edit button
+                            // When viewing, show Edit and Reminder buttons
+                            IconButton(onClick = { showReminderSheet = true }) {
+                                Icon(
+                                    if (note?.hasReminder == true) Icons.Filled.Notifications else Icons.Outlined.Notifications,
+                                    contentDescription = "Set reminder",
+                                    tint = if (note?.hasReminder == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
                             IconButton(onClick = { isEditing = true }) {
                                 Icon(Icons.Default.Edit, contentDescription = "Edit")
                             }
@@ -197,6 +208,22 @@ fun NoteDetailScreen(
             }
         }
 
+        // Reminder bottom sheet
+        if (showReminderSheet) {
+            ReminderBottomSheet(
+                currentReminderTime = note?.reminderTime,
+                onSetReminder = {
+                    viewModel.setReminder(noteId, it)
+                    showReminderSheet = false
+                },
+                onCancelReminder = {
+                    viewModel.cancelReminder(noteId)
+                    showReminderSheet = false
+                },
+                onDismiss = { showReminderSheet = false }
+            )
+        }
+
         if (showDeleteDialog) {
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = false },
@@ -255,6 +282,7 @@ fun NoteDetailScreen(
             )
         }
     }
+
 }
 
 private fun formatDetailTimestamp(timestamp: Long): String {

@@ -55,6 +55,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.material)
 
     // Compose
     implementation(platform(libs.androidx.compose.bom))
@@ -77,6 +78,9 @@ dependencies {
 
     // Icons
     implementation(libs.androidx.material.icons.extended)
+    
+    // WorkManager
+    implementation(libs.androidx.work.runtime.ktx)
 
     // Testing
     testImplementation(libs.junit)
@@ -87,5 +91,5 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
-    implementation("androidx.work:work-runtime-ktx:2.9.0")
+
 }

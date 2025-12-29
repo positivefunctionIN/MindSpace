@@ -1,10 +1,12 @@
 package com.example.mindspace
 
+import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.mindspace.data.local.Note
 import com.example.mindspace.data.repository.NoteRepository
+import com.example.mindspace.utils.ReminderManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -12,7 +14,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class NoteViewModel(private val repository: NoteRepository) : ViewModel() {
+class NoteViewModel(
+    private val repository: NoteRepository,
+    private val application: Application
+    ) : ViewModel() {
 
     private val _notes = MutableStateFlow<List<Note>>(emptyList())
     val notes: StateFlow<List<Note>> = _notes.asStateFlow()
@@ -103,16 +108,33 @@ class NoteViewModel(private val repository: NoteRepository) : ViewModel() {
         }
     }
 
+    fun setReminder(noteId: Int, reminderTime: Long) {
+        viewModelScope.launch {
+            repository.setReminder(noteId, reminderTime)
+            ReminderManager.scheduleReminder(application, noteId, reminderTime)
+        }
+    }
+
+    fun cancelReminder(noteId: Int) {
+        viewModelScope.launch {
+            repository.cancelReminder(noteId)
+            ReminderManager.cancelReminder(application, noteId)
+        }
+    }
+
     fun clearError() {
         _errorMessages.value = emptyList()
     }
 }
 
-class NoteViewModelFactory(private val repository: NoteRepository) : ViewModelProvider.Factory {
+class NoteViewModelFactory(
+    private val repository: NoteRepository,
+    private val application: Application
+    ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(NoteViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return NoteViewModel(repository) as T
+            return NoteViewModel(repository, application) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

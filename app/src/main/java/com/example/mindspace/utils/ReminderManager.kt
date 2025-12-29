@@ -1,42 +1,47 @@
 package com.example.mindspace.utils
 
+import android.app.AlarmManager
+import android.app.PendingIntent
 import android.content.Context
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
-import androidx.work.workDataOf
-import com.example.mindspace.workers.ReminderWorker
-import androidx.work.*
-import java.util.concurrent.TimeUnit
+import android.content.Intent
+import androidx.core.app.AlarmManagerCompat
+import com.example.mindspace.receivers.ReminderReceiver
 
 object ReminderManager {
-    fun scheduleReminder(
-        context: Context, noteId: Int, reminderTime: Long) {
-        val currentTine = System.currentTimeMillis()
-        val delay = reminderTime - currentTime
 
-        if(delay <= 0){
-            return
-            //time has already passed
+    fun scheduleReminder(context: Context, noteId: Int, reminderTime: Long) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+        val intent = Intent(context, ReminderReceiver::class.java).apply {
+            putExtra("noteId", noteId)
         }
 
-        val inputData = workDataOf("noteId" to noteId)
-        val reminderWork = OneTimeWorkRequestBuilder<ReminderWorker>()
-            .setInitialDelay(delay, TimeUnit.MILLISECONDS)
-            .setInputData(inputData)
-            .addTag("reminder_$noteId")
-            .build()
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            noteId,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
-        WorkManager.getInstance(context)
-            .enqueue(
-                "reminder_$noteId",
-                ExistingWorkPolicy.REPLACE,
-                reminderWork
-            )
+        AlarmManagerCompat.setExactAndAllowWhileIdle(
+            alarmManager,
+            AlarmManager.RTC_WAKEUP,
+            reminderTime,
+            pendingIntent
+        )
     }
 
-    fun cancelReminder(context: Context, noteId: Int){
-        WorkManager.getInstance(context)
-            .cancelAllWorkByTag("reminder_$noteId")
+    fun cancelReminder(context: Context, noteId: Int) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+        val intent = Intent(context, ReminderReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            noteId,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        alarmManager.cancel(pendingIntent)
     }
 }

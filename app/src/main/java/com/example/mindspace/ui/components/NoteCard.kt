@@ -16,6 +16,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.mindspace.data.local.Note
+import com.example.mindspace.utils.DateTimeUtils
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -94,6 +98,34 @@ fun NoteCard(
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
+
+            // Reminder indicator
+            if (note.hasReminder && note.reminderTime != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Surface(
+                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Notifications,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        Text(
+                            DateTimeUtils.formatReminderTime(note.reminderTime),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -222,5 +254,18 @@ fun NoteCard(
                 }
             }
         }
+    }
+}
+
+private fun DateTimeUtils.formatReminderTime(timestamp: Long): String {
+    val now = System.currentTimeMillis()
+    val diff = timestamp - now
+
+    return when {
+        diff < 0 -> "Overdue"
+        diff < 3600_000 -> "In ${diff / 60_000}m"
+        diff < 86400_000 -> "Today at ${SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date(timestamp))}"
+        diff < 172800_000 -> "Tomorrow at ${SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date(timestamp))}"
+        else -> SimpleDateFormat("MMM dd 'at' hh:mm a", Locale.getDefault()).format(Date(timestamp))
     }
 }
