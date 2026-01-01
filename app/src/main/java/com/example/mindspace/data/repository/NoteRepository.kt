@@ -3,8 +3,11 @@ package com.example.mindspace.data.repository
 import com.example.mindspace.data.local.Note
 import com.example.mindspace.data.local.NoteDao
 import kotlinx.coroutines.flow.Flow
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class NoteRepository(private val noteDao: NoteDao) {
+@Singleton
+class NoteRepository @Inject constructor(private val noteDao: NoteDao) {
 
     // ===== READ OPERATIONS =====
 

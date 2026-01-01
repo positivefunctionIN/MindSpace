@@ -1,35 +1,31 @@
 package com.example.mindspace
 
 import android.app.Application
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mindspace.data.local.Note
 import com.example.mindspace.data.repository.NoteRepository
 import com.example.mindspace.utils.ReminderManager
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class NoteViewModel(
+@HiltViewModel
+class NoteViewModel @Inject constructor(
     private val repository: NoteRepository,
-    private val application: Application
-    ) : ViewModel() {
+    application: Application
+) : AndroidViewModel(application) {
 
     private val _notes = MutableStateFlow<List<Note>>(emptyList())
     val notes: StateFlow<List<Note>> = _notes.asStateFlow()
 
     private val _selectedNote = MutableStateFlow<Note?>(null)
     val selectedNote: StateFlow<Note?> = _selectedNote.asStateFlow()
-
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-
-    private val _errorMessages = MutableStateFlow<List<String>>(emptyList())
-    val errorMessages: StateFlow<List<String>> = _errorMessages.asStateFlow()
 
     val trashCount: StateFlow<Int> = repository.trashCount
         .stateIn(
@@ -52,90 +48,48 @@ class NoteViewModel(
 
     fun addNote(title: String, content: String, category: String = "General") {
         viewModelScope.launch {
-            try {
-                val note = Note(
-                    title = title.ifBlank { "Untitled" },
-                    content = content,
-                    category = category
-                )
-                repository.insertNote(note)
-            } catch (e: Exception) {
-                _errorMessages.value = _errorMessages.value + "Error adding note: ${e.message}"
-            }
+            val note = Note(
+                title = title.ifBlank { "Untitled" },
+                content = content,
+                category = category
+            )
+            repository.insertNote(note)
         }
     }
 
     fun updateNote(note: Note) {
-        viewModelScope.launch {
-            try {
-                repository.updateNote(note)
-            } catch (e: Exception) {
-                _errorMessages.value = _errorMessages.value + "Error updating note: ${e.message}"
-            }
-        }
+        viewModelScope.launch { repository.updateNote(note) }
     }
 
     fun deleteNote(noteId: Int) {
-        viewModelScope.launch {
-            try {
-                repository.moveToTrash(noteId)
-            } catch (e: Exception) {
-                _errorMessages.value = _errorMessages.value + "Error deleting note: ${e.message}"
-            }
-        }
+        viewModelScope.launch { repository.moveToTrash(noteId) }
     }
 
     fun loadNoteById(noteId: Int) {
         viewModelScope.launch {
-            try {
-                val note = repository.getNoteById(noteId)
-                _selectedNote.value = note
-            } catch (e: Exception) {
-                _errorMessages.value = _errorMessages.value + "Error loading note: ${e.message}"
-            }
+            _selectedNote.value = repository.getNoteById(noteId)
         }
     }
 
     fun togglePin(note: Note) {
-        viewModelScope.launch {
-            repository.togglePin(note.id, !note.isPinned)
-        }
+        viewModelScope.launch { repository.togglePin(note.id, !note.isPinned) }
     }
 
     fun toggleFavorite(note: Note) {
-        viewModelScope.launch {
-            repository.toggleFavorite(note.id, !note.isFavorite)
-        }
+        viewModelScope.launch { repository.toggleFavorite(note.id, !note.isFavorite) }
     }
 
     fun setReminder(noteId: Int, reminderTime: Long) {
         viewModelScope.launch {
             repository.setReminder(noteId, reminderTime)
-            ReminderManager.scheduleReminder(application, noteId, reminderTime)
+            ReminderManager.scheduleReminder(getApplication(), noteId, reminderTime)
         }
     }
 
     fun cancelReminder(noteId: Int) {
         viewModelScope.launch {
             repository.cancelReminder(noteId)
-            ReminderManager.cancelReminder(application, noteId)
+            ReminderManager.cancelReminder(getApplication(), noteId)
         }
-    }
-
-    fun clearError() {
-        _errorMessages.value = emptyList()
-    }
-}
-
-class NoteViewModelFactory(
-    private val repository: NoteRepository,
-    private val application: Application
-    ) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(NoteViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return NoteViewModel(repository, application) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }

@@ -3,11 +3,16 @@ package com.example.mindspace.ui.trash
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mindspace.data.repository.NoteRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class TrashViewModel(private val noteRepository: NoteRepository) : ViewModel(){
+@HiltViewModel
+class TrashViewModel @Inject constructor(
+    private val noteRepository: NoteRepository
+) : ViewModel(){
     val trashNotes = noteRepository.trashNotes
         .stateIn(
             scope = viewModelScope,
@@ -34,12 +39,8 @@ class TrashViewModel(private val noteRepository: NoteRepository) : ViewModel(){
     }
 
     init {
-        // Automatically clean old trash notes every start
         viewModelScope.launch {
             noteRepository.cleanOldTrash()
         }
     }
-
-
-
 }

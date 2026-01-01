@@ -1,7 +1,6 @@
 package com.example.mindspace
 
 import android.Manifest
-import android.app.Application
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -14,17 +13,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.mindspace.data.local.NoteDatabase
-import com.example.mindspace.data.repository.NoteRepository
 import com.example.mindspace.navigation.Screen
 import com.example.mindspace.ui.screens.AddNoteScreen
 import com.example.mindspace.ui.screens.NoteDetailScreen
@@ -32,9 +28,9 @@ import com.example.mindspace.ui.screens.NoteListScreen
 import com.example.mindspace.ui.theme.MindSpaceTheme
 import com.example.mindspace.ui.trash.TrashScreen
 import com.example.mindspace.ui.trash.TrashViewModel
-import com.example.mindspace.ui.trash.TrashViewModelFactory
-import com.example.mindspace.utils.NotificationHelper
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -48,8 +44,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Create notification channel
-        NotificationHelper.createNotificationChannel(this)
 
         // Request notification permission for Android 13+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -84,23 +78,12 @@ class MainActivity : ComponentActivity() {
 fun MindSpaceApp() {
     val navController: NavHostController = rememberNavController()
 
-    // Get application context for dependency injection
-    val context = LocalContext.current
-    val application = context.applicationContext as Application
-
-    // Create a single instance of the repository
-    val noteDao = NoteDatabase.getDatabase(application).noteDao()
-    val noteRepository = NoteRepository(noteDao)
-
-    val noteViewModel: NoteViewModel = viewModel(
-        factory = NoteViewModelFactory(noteRepository, application)
-    )
-
     NavHost(
         navController = navController,
         startDestination = Screen.NoteList.route
     ) {
         composable(Screen.NoteList.route) {
+            val noteViewModel: NoteViewModel = hiltViewModel()
             NoteListScreen(
                 viewModel = noteViewModel,
                 onAddNote = { navController.navigate(Screen.AddNote.route) },
@@ -112,6 +95,7 @@ fun MindSpaceApp() {
         }
 
         composable(Screen.AddNote.route) {
+            val noteViewModel: NoteViewModel = hiltViewModel()
             AddNoteScreen(
                 viewModel = noteViewModel,
                 onNavigateBack = { navController.popBackStack() }
@@ -126,6 +110,7 @@ fun MindSpaceApp() {
                 }
             )
         ) { backStackEntry ->
+            val noteViewModel: NoteViewModel = hiltViewModel()
             val noteId = backStackEntry.arguments?.getInt("noteId") ?: 0
             NoteDetailScreen(
                 noteId = noteId,
@@ -135,9 +120,7 @@ fun MindSpaceApp() {
         }
 
         composable(Screen.Trash.route) {
-            val trashViewModel: TrashViewModel = viewModel(
-                factory = TrashViewModelFactory(noteRepository)
-            )
+            val trashViewModel: TrashViewModel = hiltViewModel()
             TrashScreen(
                 viewModel = trashViewModel,
                 onNavigateBack = { navController.popBackStack() }

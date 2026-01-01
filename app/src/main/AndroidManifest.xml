@@ -6,10 +6,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
-
-
     <application
+        android:name=".MindSpaceApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -32,7 +30,7 @@
 
         <!-- Broadcast Receiver for Reminders -->
         <receiver
-            android:name=".utils.ReminderBroadcastReceiver"
+            android:name=".receivers.ReminderReceiver"
             android:enabled="true"
             android:exported="false" />
 
